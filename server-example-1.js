@@ -6,11 +6,13 @@ const app = express();
 
 app.use(express.json());
 
+// example data
 const posts = [
   { username: "Tawnee", title: "Post One" },
   { username: "Jim", title: "Post Two" },
 ];
 
+// would normally be stored in a db or redis cache
 let refreshTokens = [];
 
 app.get("/posts", authenticateToken, (req, res) => {
@@ -35,29 +37,36 @@ app.post("/token", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
+  // email/password validation would normally happen here
   const username = req.body.username;
   const user = { name: username };
   const accessToken = generateAccessToken(user);
   const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET);
+
+  // creates list of valid refresh tokens
   refreshTokens.push(refreshToken);
 
   res.json({ accessToken, refreshToken });
 });
 
 function generateAccessToken(user) {
-  return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "15s" });
+  return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+    // would normally be 5 to 15 minutes
+    expiresIn: "15s",
+  });
 }
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
+  // gets token from "Bearer tokenid123" format
   const token = authHeader && authHeader.split(" ")[1];
-
   if (!token) return res.sendStatus(401);
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
     if (err) return res.sendStatus(403);
 
     req.user = user;
+    // passes control to the next middleware function
     next();
   });
 }
